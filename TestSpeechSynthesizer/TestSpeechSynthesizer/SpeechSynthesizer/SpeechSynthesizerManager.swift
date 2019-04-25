@@ -12,14 +12,14 @@ import AVFoundation
 class SpeechSynthesizerManager {
     static let shared = SpeechSynthesizerManager()
     private init () {}
+    let speechSynthesizer = AVSpeechSynthesizer()
     
     func speak (text: String) {
         let speechUtterance = AVSpeechUtterance(string: text)
         speechUtterance.rate = AVSpeechUtteranceDefaultSpeechRate
         speechUtterance.voice = AVSpeechSynthesisVoice.init(language: "US")
         speechUtterance.voice = AVSpeechSynthesisVoice.init(identifier: AVSpeechSynthesisVoiceIdentifierAlex)
-        let speechSynthesizer = AVSpeechSynthesizer()
-        speechSynthesizer.speak(speechUtterance)
+        self.speechSynthesizer.speak(speechUtterance)
     }
     
     

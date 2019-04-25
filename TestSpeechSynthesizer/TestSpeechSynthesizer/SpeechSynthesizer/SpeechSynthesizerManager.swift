@@ -14,14 +14,18 @@ class SpeechSynthesizerManager {
     private init () {}
     let speechSynthesizer = AVSpeechSynthesizer()
     
+    public var languageCode: String = "en-US"
+    
     func speak (text: String) {
-        let speechUtterance = AVSpeechUtterance(string: text)
-        speechUtterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        speechUtterance.voice = AVSpeechSynthesisVoice.init(language: "US")
-        speechUtterance.voice = AVSpeechSynthesisVoice.init(identifier: AVSpeechSynthesisVoiceIdentifierAlex)
-        self.speechSynthesizer.speak(speechUtterance)
+        self.speak(text: text, language: self.languageCode)
     }
     
+    func speak (text: String, language: String) {
+        let speechUtterance = AVSpeechUtterance(string: text)
+        speechUtterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
+        self.speechSynthesizer.speak(speechUtterance)
+    }
     
 }
 

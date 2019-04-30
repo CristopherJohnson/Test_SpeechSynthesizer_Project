@@ -16,7 +16,6 @@ class SpeechSynthesizerManager {
     
     private var currentText = ""
     
-    private var isSpeaking: Bool = false
     private var isPaused: Bool = false
     
     public var languageCode: String = "en-US"
@@ -28,21 +27,17 @@ class SpeechSynthesizerManager {
     func speak (text: String, language: String) {
         
         if self.currentText == text {
-            if self.isPaused == false && self.isSpeaking == false {
+            if self.isPaused == false && self.speechSynthesizer.isSpeaking == false {
                 let speechUtterance = AVSpeechUtterance(string: text)
                 speechUtterance.rate = AVSpeechUtteranceDefaultSpeechRate
                 speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
                 self.speechSynthesizer.speak(speechUtterance)
-                self.isSpeaking = true
-            } else if self.isSpeaking == true {
+            } else if self.isPaused == false {
                 self.speechSynthesizer.pauseSpeaking(at: .immediate)
-                self.isSpeaking = false
                 self.isPaused = true
             } else if self.isPaused == true {
-                print("continue")
                 self.speechSynthesizer.continueSpeaking()
                 self.isPaused = false
-                self.isSpeaking = true
             }
         } else if self.currentText != text {
             self.speechSynthesizer.stopSpeaking(at: .immediate)
@@ -51,7 +46,6 @@ class SpeechSynthesizerManager {
             speechUtterance.rate = AVSpeechUtteranceDefaultSpeechRate
             speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
             self.speechSynthesizer.speak(speechUtterance)
-            self.isSpeaking = true
         }
     }
     

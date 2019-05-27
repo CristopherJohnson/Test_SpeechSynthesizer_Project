@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A33B295B229C5E60003157BC /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A33B295A229C5E60003157BC /* ViewController.swift */; };
 		A3D826AF22720FDE00BF6F1B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D826AE22720FDE00BF6F1B /* AppDelegate.swift */; };
 		A3D826B422720FDE00BF6F1B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A3D826B222720FDE00BF6F1B /* Main.storyboard */; };
 		A3D826B622720FE000BF6F1B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A3D826B522720FE000BF6F1B /* Assets.xcassets */; };
@@ -36,6 +37,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A33B295A229C5E60003157BC /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		A3D826AB22720FDE00BF6F1B /* TestSpeechSynthesizer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestSpeechSynthesizer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3D826AE22720FDE00BF6F1B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A3D826B322720FDE00BF6F1B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 				A3D826B522720FE000BF6F1B /* Assets.xcassets */,
 				A3D826B722720FE000BF6F1B /* LaunchScreen.storyboard */,
 				A3D826BA22720FE000BF6F1B /* Info.plist */,
+				A33B295A229C5E60003157BC /* ViewController.swift */,
 			);
 			path = TestSpeechSynthesizer;
 			sourceTree = "<group>";
@@ -278,6 +281,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A33B295B229C5E60003157BC /* ViewController.swift in Sources */,
 				A3D826E42272208200BF6F1B /* SpeechSynthesizerManager.swift in Sources */,
 				A3D826AF22720FDE00BF6F1B /* AppDelegate.swift in Sources */,
 				A3D826DD2272102900BF6F1B /* TestTableViewController.swift in Sources */,

@@ -65,46 +65,50 @@ class SpeechRecognitionMeneger {
     private var isRecording: Bool = false
     private var text = ""
     
-    public func startRecording (complition: @escaping (String?)->()) {
-        
+    public func startRecording () {
         if self.isRecording {
             audioEngine.stop()
             request.endAudio()
             recognitionTask?.cancel()
             audioEngine.inputNode.removeTap(onBus: 0)
             self.isRecording = false
-            complition(text)
-            self.text = ""
-        } else {
-            self.text = ""
-            self.isRecording = true
-            let node = audioEngine.inputNode
-            let recordingFormat = node.outputFormat(forBus: 0)
+        }
+        self.text = ""
+        self.isRecording = true
+        let node = audioEngine.inputNode
+        let recordingFormat = node.outputFormat(forBus: 0)
             
-            node.installTap(onBus: 0, bufferSize: 1024,
+        node.installTap(onBus: 0, bufferSize: 1024,
                             format: recordingFormat) { [unowned self]
                                 (buffer, _) in
                                 self.request.append(buffer)
-            }
+        }
             
-            audioEngine.prepare()
-            do {
-                try audioEngine.start()
-            } catch let error {
-                print("There was a problem starting recording: \(error.localizedDescription)")
-                complition(nil)
-            }
-            
-            recognitionTask = speechRecognizer?.recognitionTask(with: request) {
-                (result, _) in
-                if let transcription = result?.bestTranscription {
-                    self.text = transcription.formattedString
-                } else {
-                    complition(nil)
-                }
-            }
+        audioEngine.prepare()
+        do {
+            try audioEngine.start()
+        } catch let error {
+            print("There was a problem starting recording: \(error.localizedDescription)")
             
         }
+            
+        recognitionTask = speechRecognizer?.recognitionTask(with: request) {
+            [unowned self]
+            (result, _) in
+               if let transcription = result?.bestTranscription {
+                self.text = transcription.formattedString
+            }
+        }
+    }
+    
+    public func stopRecording (complition: @escaping(String)->()) {
+        audioEngine.stop()
+        request.endAudio()
+        recognitionTask?.cancel()
+        audioEngine.inputNode.removeTap(onBus: 0)
+        self.isRecording = false
+        complition(self.text)
+        self.text = ""
     }
 }
 

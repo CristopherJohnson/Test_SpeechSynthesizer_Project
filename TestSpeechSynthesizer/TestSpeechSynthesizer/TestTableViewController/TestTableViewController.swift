@@ -24,21 +24,26 @@ class TestTableViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return testStringArray.count
+        return 1
     }
 
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TestCell", for: indexPath) as! TestTableViewCell
         
-        let text = self.testStringArray[indexPath.row]
-        cell.setup(text: text)
-
+        
         return cell
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        SpeechSynthesizerManager.shared.speak(text: testStringArray[indexPath.row])
+        SpeechRecognitionMeneger.shared.startRecording { (str: String?) in
+            if let text = str {
+                print(text)
+                if text == "" {
+                    print("NO Text")
+                }
+            }
+        }
     }
 
 }

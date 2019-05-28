@@ -36,7 +36,7 @@ class TestTableViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        SpeechRecognitionMeneger.shared.startRecording ()
+        
     }
 
 }

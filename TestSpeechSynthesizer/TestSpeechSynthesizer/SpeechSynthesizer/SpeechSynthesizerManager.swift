@@ -58,23 +58,26 @@ class SpeechRecognitionMeneger {
     private init () {}
     
     private let audioEngine = AVAudioEngine()
-    private let speechRecognizer = SFSpeechRecognizer()
+    private var speechRecognizer = SFSpeechRecognizer()
     private let request = SFSpeechAudioBufferRecognitionRequest()
     private var recognitionTask: SFSpeechRecognitionTask?
     
     private var isRecording: Bool = false
     private var text = ""
+    public var languageCode: String = "en-US"
+    public func startRecognition() {
+        self.startRecognition(language: languageCode)
+    }
     
-    public func startRecording () {
+    public func startRecognition (language: String) {
         if self.isRecording {
-            audioEngine.stop()
-            request.endAudio()
-            recognitionTask?.cancel()
-            audioEngine.inputNode.removeTap(onBus: 0)
-            self.isRecording = false
+            self.stopRecognition()
         }
         self.text = ""
         self.isRecording = true
+        
+//        self.speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: language))
+        
         let node = audioEngine.inputNode
         let recordingFormat = node.outputFormat(forBus: 0)
             
@@ -89,26 +92,28 @@ class SpeechRecognitionMeneger {
             try audioEngine.start()
         } catch let error {
             print("There was a problem starting recording: \(error.localizedDescription)")
-            
+            return
         }
             
         recognitionTask = speechRecognizer?.recognitionTask(with: request) {
             [unowned self]
-            (result, _) in
-               if let transcription = result?.bestTranscription {
+            (result, error) in
+            if let transcription = result?.bestTranscription {
                 self.text = transcription.formattedString
+            }
+            if let error = error {
+                print("recognitionTask error: \(error.localizedDescription)")
             }
         }
     }
     
-    public func stopRecording (complition: @escaping(String)->()) {
+    public func stopRecognition () -> String {
         audioEngine.stop()
         request.endAudio()
         recognitionTask?.cancel()
         audioEngine.inputNode.removeTap(onBus: 0)
         self.isRecording = false
-        complition(self.text)
-        self.text = ""
+        return self.text
     }
 }
 

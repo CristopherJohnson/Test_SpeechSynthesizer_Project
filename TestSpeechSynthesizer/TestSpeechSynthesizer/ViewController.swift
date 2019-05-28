@@ -20,16 +20,20 @@ class ViewController: UIViewController {
         // Do any additional setup after loading the view.
     }
     
+//    @IBAction func touchDown () {
+//        SpeechRecognitionMeneger.shared.startRecognition()
+//    }
+    
     @IBAction func touch () {
         if self.isRecording {
-            SpeechRecognitionMeneger.shared.stopRecording { (str: String) in
-                print("Text is \(str)")
-                self.isRecording = false
-            }
+            let text = SpeechRecognitionMeneger.shared.stopRecognition()
+            print(text)
+            self.isRecording = false
         } else {
+            SpeechRecognitionMeneger.shared.startRecognition()
             self.isRecording = true
-            SpeechRecognitionMeneger.shared.startRecording()
         }
     }
+        
 
 }

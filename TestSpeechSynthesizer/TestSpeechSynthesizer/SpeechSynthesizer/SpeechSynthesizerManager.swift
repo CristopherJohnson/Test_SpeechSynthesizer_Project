@@ -58,61 +58,79 @@ class SpeechRecognitionMeneger {
     private init () {}
     
     private let audioEngine = AVAudioEngine()
-    private var speechRecognizer = SFSpeechRecognizer()
+    private var speechRecognizer: SFSpeechRecognizer?
     private let request = SFSpeechAudioBufferRecognitionRequest()
     private var recognitionTask: SFSpeechRecognitionTask?
     
     private var isRecording: Bool = false
     private var text = ""
-    public var languageCode: String = "en-US"
+    private var languageCode: String = "en-US"
+    
     public func startRecognition() {
-        self.startRecognition(language: languageCode)
+        self.startRecognition(language: self.languageCode)
     }
     
     public func startRecognition (language: String) {
         if self.isRecording {
-            self.stopRecognition()
+            _ = self.stopRecognition()
         }
+        self.languageCode = language
         self.text = ""
         self.isRecording = true
         
-//        self.speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: language))
+        self.speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: language))
         
         let node = audioEngine.inputNode
         let recordingFormat = node.outputFormat(forBus: 0)
-            
+        
         node.installTap(onBus: 0, bufferSize: 1024,
-                            format: recordingFormat) { [unowned self]
-                                (buffer, _) in
-                                self.request.append(buffer)
+                        format: recordingFormat) { [unowned self]
+                            (buffer, _) in
+                            self.request.append(buffer)
         }
-            
-        audioEngine.prepare()
+        
+        self.audioEngine.prepare()
         do {
-            try audioEngine.start()
+            try self.audioEngine.start()
         } catch let error {
             print("There was a problem starting recording: \(error.localizedDescription)")
             return
         }
+        
+        self.recognitionTask = self.speechRecognizer?.recognitionTask(with: request) { [unowned self] (result: SFSpeechRecognitionResult?, error: Error?) in
             
-        recognitionTask = speechRecognizer?.recognitionTask(with: request) {
-            [unowned self]
-            (result, error) in
+            print("result?.bestTranscription \(String(describing: result?.bestTranscription))")
+            
             if let transcription = result?.bestTranscription {
                 self.text = transcription.formattedString
             }
+            
             if let error = error {
                 print("recognitionTask error: \(error.localizedDescription)")
+                _ = self.stopRecognition()
+            }
+            
+            if let isFinal = result?.isFinal, isFinal {
+                _ = self.stopRecognition()
             }
         }
     }
     
     public func stopRecognition () -> String {
-        audioEngine.stop()
-        request.endAudio()
-        recognitionTask?.cancel()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if self.audioEngine.isRunning {
+            self.audioEngine.stop()
+            self.audioEngine.inputNode.removeTap(onBus: 0)
+        }
+        
+        self.request.endAudio()
+        
+        if let recognitionTask = self.recognitionTask {
+            recognitionTask.finish()
+        }
+        self.recognitionTask = nil
+        
         self.isRecording = false
+        
         return self.text
     }
 }

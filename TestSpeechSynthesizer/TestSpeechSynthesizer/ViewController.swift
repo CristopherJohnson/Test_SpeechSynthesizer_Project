@@ -27,7 +27,7 @@ class ViewController: UIViewController {
     @IBAction func touch () {
         if self.isRecording {
             let text = SpeechRecognitionMeneger.shared.stopRecognition()
-            print(text)
+            print("text is" + text)
             self.isRecording = false
         } else {
             SpeechRecognitionMeneger.shared.startRecognition()

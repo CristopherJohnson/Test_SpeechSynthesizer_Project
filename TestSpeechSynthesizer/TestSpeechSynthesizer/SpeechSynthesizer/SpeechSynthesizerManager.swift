@@ -20,18 +20,30 @@ class SpeechSynthesizerManager {
     private var isPaused: Bool = false
     
     public var languageCode: String = "en-US"
+    public var speechRate: Float = AVSpeechUtteranceDefaultSpeechRate
+    public var needMaleVoice = true
     
     func speak (text: String) {
-        self.speak(text: text, language: self.languageCode)
+        self.speak(text: text, language: self.languageCode, speechRate: self.speechRate, needMaleVoice: self.needMaleVoice)
     }
     
-    func speak (text: String, language: String) {
+    func speak (text: String, language: String, speechRate: Float, needMaleVoice: Bool) {
+        var speed: Float = AVSpeechUtteranceDefaultSpeechRate
+        if speed <= 1 && speed >= 0{
+            speed = speechRate
+        }
+        print(AVSpeechSynthesisVoice.speechVoices())
         
         if self.currentText == text {
             if self.isPaused == false && self.speechSynthesizer.isSpeaking == false {
                 let speechUtterance = AVSpeechUtterance(string: text)
-                speechUtterance.rate = AVSpeechUtteranceDefaultSpeechRate
-                speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
+                speechUtterance.rate = speed
+                if needMaleVoice && language.contains("en") {
+                    speechUtterance.voice = AVSpeechSynthesisVoice.init(language: "en-GB")
+                    speechUtterance.voice = AVSpeechSynthesisVoice.init(identifier: "com.apple.ttsbundle.Daniel-compact")
+                } else {
+                    speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
+                }
                 self.speechSynthesizer.speak(speechUtterance)
             } else if self.isPaused == false {
                 self.speechSynthesizer.pauseSpeaking(at: .immediate)
@@ -44,8 +56,13 @@ class SpeechSynthesizerManager {
             self.speechSynthesizer.stopSpeaking(at: .immediate)
             self.currentText = text
             let speechUtterance = AVSpeechUtterance(string: text)
-            speechUtterance.rate = AVSpeechUtteranceDefaultSpeechRate
-            speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
+            speechUtterance.rate = speed
+            if needMaleVoice && language.contains("en") {
+                speechUtterance.voice = AVSpeechSynthesisVoice.init(language: "en-GB")
+                speechUtterance.voice = AVSpeechSynthesisVoice.init(identifier: "com.apple.ttsbundle.Daniel-compact")
+            } else {
+                speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
+            }
             self.speechSynthesizer.speak(speechUtterance)
         }
     }

@@ -20,30 +20,22 @@ class SpeechSynthesizerManager {
     private var isPaused: Bool = false
     
     public var languageCode: String = "en-US"
-    public var speechRate: Float = AVSpeechUtteranceDefaultSpeechRate
-    public var needMaleVoice = true
     
-    func speak (text: String) {
-        self.speak(text: text, language: self.languageCode, speechRate: self.speechRate, needMaleVoice: self.needMaleVoice)
+    func speechRate() -> Float {
+        return (AVSpeechUtteranceDefaultSpeechRate - AVSpeechUtteranceMinimumSpeechRate) * 0.75
     }
     
-    func speak (text: String, language: String, speechRate: Float, needMaleVoice: Bool) {
-        var speed: Float = AVSpeechUtteranceDefaultSpeechRate
-        if speed <= 1 && speed >= 0{
-            speed = speechRate
-        }
-        print(AVSpeechSynthesisVoice.speechVoices())
+    func speak (text: String) {
+        self.speak(text: text, language: self.languageCode)
+    }
+    
+    func speak (text: String, language: String) {
         
         if self.currentText == text {
             if self.isPaused == false && self.speechSynthesizer.isSpeaking == false {
                 let speechUtterance = AVSpeechUtterance(string: text)
-                speechUtterance.rate = speed
-                if needMaleVoice && language.contains("en") {
-                    speechUtterance.voice = AVSpeechSynthesisVoice.init(language: "en-GB")
-                    speechUtterance.voice = AVSpeechSynthesisVoice.init(identifier: "com.apple.ttsbundle.Daniel-compact")
-                } else {
-                    speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
-                }
+                speechUtterance.rate = self.speechRate()
+                speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
                 self.speechSynthesizer.speak(speechUtterance)
             } else if self.isPaused == false {
                 self.speechSynthesizer.pauseSpeaking(at: .immediate)
@@ -56,13 +48,8 @@ class SpeechSynthesizerManager {
             self.speechSynthesizer.stopSpeaking(at: .immediate)
             self.currentText = text
             let speechUtterance = AVSpeechUtterance(string: text)
-            speechUtterance.rate = speed
-            if needMaleVoice && language.contains("en") {
-                speechUtterance.voice = AVSpeechSynthesisVoice.init(language: "en-GB")
-                speechUtterance.voice = AVSpeechSynthesisVoice.init(identifier: "com.apple.ttsbundle.Daniel-compact")
-            } else {
-                speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
-            }
+            speechUtterance.rate = self.speechRate()
+            speechUtterance.voice = AVSpeechSynthesisVoice.init(language: language)
             self.speechSynthesizer.speak(speechUtterance)
         }
     }
@@ -83,6 +70,16 @@ class SpeechRecognitionMeneger {
     private var text = ""
     private var languageCode: String = "en-US"
     
+    public var resultUpdateClosure: ( (_ resultText: String?, _ error: Error?) -> () )?
+    
+    public func requestPermission(completion: @escaping (Bool) -> ()) {
+        SFSpeechRecognizer.requestAuthorization { (status: SFSpeechRecognizerAuthorizationStatus) in
+            OperationQueue.main.addOperation({
+                completion(.authorized == status)
+            })
+        }
+    }
+    
     public func startRecognition() {
         self.startRecognition(language: self.languageCode)
     }
@@ -91,22 +88,22 @@ class SpeechRecognitionMeneger {
         if self.isRecording {
             _ = self.stopRecognition()
         }
+        
         self.languageCode = language
         self.text = ""
         self.isRecording = true
         
         self.speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: language))
         
-        let node = audioEngine.inputNode
-        let recordingFormat = node.outputFormat(forBus: 0)
-        
-        node.installTap(onBus: 0, bufferSize: 1024,
-                        format: recordingFormat) { [unowned self]
-                            (buffer, _) in
-                            self.request.append(buffer)
+        let recordingFormat = self.audioEngine.inputNode.outputFormat(forBus: 0)
+        self.audioEngine.inputNode.installTap(onBus: 0,
+                                              bufferSize: 1024,
+                                              format: recordingFormat) { [unowned self] (buffer, _) in
+                                                self.request.append(buffer)
         }
         
         self.audioEngine.prepare()
+        
         do {
             try self.audioEngine.start()
         } catch let error {
@@ -116,10 +113,12 @@ class SpeechRecognitionMeneger {
         
         self.recognitionTask = self.speechRecognizer?.recognitionTask(with: request) { [unowned self] (result: SFSpeechRecognitionResult?, error: Error?) in
             
-            print("result?.bestTranscription \(String(describing: result?.bestTranscription))")
-            
             if let transcription = result?.bestTranscription {
                 self.text = transcription.formattedString
+            }
+            
+            if let resultUpdateClosure = self.resultUpdateClosure {
+                resultUpdateClosure(result?.bestTranscription.formattedString, error)
             }
             
             if let error = error {
@@ -134,12 +133,12 @@ class SpeechRecognitionMeneger {
     }
     
     public func stopRecognition () -> String {
+        self.request.endAudio()
+        
         if self.audioEngine.isRunning {
             self.audioEngine.stop()
             self.audioEngine.inputNode.removeTap(onBus: 0)
         }
-        
-        self.request.endAudio()
         
         if let recognitionTask = self.recognitionTask {
             recognitionTask.finish()
@@ -151,4 +150,3 @@ class SpeechRecognitionMeneger {
         return self.text
     }
 }
-

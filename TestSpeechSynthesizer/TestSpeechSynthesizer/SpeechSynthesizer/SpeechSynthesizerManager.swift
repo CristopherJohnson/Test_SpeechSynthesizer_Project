@@ -10,6 +10,12 @@ import Foundation
 import AVFoundation
 import Speech
 
+enum SpeechRecognitionManagerError: Error {
+    case emptyRecognitionRequest
+    case emptySpeechRecognizer
+    case inProgress
+}
+
 class SpeechSynthesizerManager {
     static let shared = SpeechSynthesizerManager()
     private init () {}
@@ -22,7 +28,7 @@ class SpeechSynthesizerManager {
     public var languageCode: String = "en-US"
     
     func speechRate() -> Float {
-        return (AVSpeechUtteranceDefaultSpeechRate - AVSpeechUtteranceMinimumSpeechRate) * 0.75
+        return (AVSpeechUtteranceDefaultSpeechRate - AVSpeechUtteranceMinimumSpeechRate) * 0.9
     }
     
     func speak (text: String) {
@@ -59,94 +65,132 @@ class SpeechSynthesizerManager {
 class SpeechRecognitionMeneger {
     
     static let shared = SpeechRecognitionMeneger()
+    // MARK: -
+    
     private init () {}
     
     private let audioEngine = AVAudioEngine()
-    private var speechRecognizer: SFSpeechRecognizer?
-    private let request = SFSpeechAudioBufferRecognitionRequest()
-    private var recognitionTask: SFSpeechRecognitionTask?
+    private var speechRecognizer:   SFSpeechRecognizer?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask:    SFSpeechRecognitionTask?
     
     private var isRecording: Bool = false
     private var text = ""
     private var languageCode: String = "en-US"
+
     
-    public var resultUpdateClosure: ( (_ resultText: String?, _ error: Error?) -> () )?
+    public func setCanNotTalk() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970 + 1 * 60 * 60, forKey: "Can not talk")
+    }
+    
+    public func canTalk() -> Bool {
+        let currentDate = Date().timeIntervalSince1970
+        let savedDate   = UserDefaults.standard.double(forKey: "Can not talk")
+        
+        return currentDate > savedDate
+    }
+    
+    public var resultUpdateClosure: ( (_ resultText: String?, _ error: Error?, _ isFinal: Bool) -> () )?
     
     public func requestPermission(completion: @escaping (Bool) -> ()) {
         SFSpeechRecognizer.requestAuthorization { (status: SFSpeechRecognizerAuthorizationStatus) in
-            OperationQueue.main.addOperation({
-                completion(.authorized == status)
-            })
+            if .authorized != status {
+                OperationQueue.main.addOperation({ completion(false) })
+            } else {
+                AVAudioSession.sharedInstance().requestRecordPermission({ (isMicroGranted: Bool) in
+                    OperationQueue.main.addOperation({ completion(isMicroGranted) })
+                })
+            }
         }
     }
     
-    public func startRecognition() {
-        self.startRecognition(language: self.languageCode)
+    public func startRecognition() throws {
+        try self.startRecognition(language: self.languageCode)
     }
     
-    public func startRecognition (language: String) {
+    public func startRecognition (language: String) throws {
         if self.isRecording {
-            _ = self.stopRecognition()
+            throw SpeechRecognitionManagerError.inProgress
         }
         
-        self.languageCode = language
+        if nil != recognitionTask {
+            throw SpeechRecognitionManagerError.inProgress
+        }
+        
+        guard let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: language)) else {
+            throw SpeechRecognitionManagerError.emptySpeechRecognizer
+        }
+        
         self.text = ""
+        
         self.isRecording = true
         
-        self.speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: language))
+        self.speechRecognizer = speechRecognizer
         
-        let recordingFormat = self.audioEngine.inputNode.outputFormat(forBus: 0)
-        self.audioEngine.inputNode.installTap(onBus: 0,
-                                              bufferSize: 1024,
-                                              format: recordingFormat) { [unowned self] (buffer, _) in
-                                                self.request.append(buffer)
-        }
+        let audioSession = AVAudioSession.sharedInstance()
+        try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default)
+        try audioSession.setMode(AVAudioSession.Mode.measurement)
+        try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         
-        self.audioEngine.prepare()
+        self.recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
+        guard let recognitionRequest = recognitionRequest else { throw SpeechRecognitionManagerError.emptyRecognitionRequest }
         
-        do {
-            try self.audioEngine.start()
-        } catch let error {
-            print("There was a problem starting recording: \(error.localizedDescription)")
-            return
-        }
+        let inputNode = audioEngine.inputNode
+        // Configure request so that results are returned before audio recording is finished
+        recognitionRequest.shouldReportPartialResults = true
         
-        self.recognitionTask = self.speechRecognizer?.recognitionTask(with: request) { [unowned self] (result: SFSpeechRecognitionResult?, error: Error?) in
+        // A recognition task represents a speech recognition session.
+        // We keep a reference to the task so that it can be cancelled.
+        recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { result, error in
+            let isFinal = result?.isFinal ?? false
             
-            if let transcription = result?.bestTranscription {
-                self.text = transcription.formattedString
+            if error != nil || isFinal {
+                self.audioEngine.stop()
+                inputNode.removeTap(onBus: 0)
+                
+                self.recognitionRequest = nil
+                self.recognitionTask = nil
+                
+                self.isRecording = false
             }
             
             if let resultUpdateClosure = self.resultUpdateClosure {
-                resultUpdateClosure(result?.bestTranscription.formattedString, error)
-            }
-            
-            if let error = error {
-                print("recognitionTask error: \(error.localizedDescription)")
-                _ = self.stopRecognition()
-            }
-            
-            if let isFinal = result?.isFinal, isFinal {
-                _ = self.stopRecognition()
+                let text = result?.bestTranscription.formattedString ?? ""
+                resultUpdateClosure(text, error, isFinal)
             }
         }
+        
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { (buffer: AVAudioPCMBuffer, when: AVAudioTime) in
+            self.recognitionRequest?.append(buffer)
+        }
+        
+        audioEngine.prepare()
+        
+        try audioEngine.start()
     }
     
     public func stopRecognition () -> String {
-        self.request.endAudio()
-        
-        if self.audioEngine.isRunning {
-            self.audioEngine.stop()
-            self.audioEngine.inputNode.removeTap(onBus: 0)
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            recognitionRequest?.endAudio()
+            
+            do {
+                let audioSession = AVAudioSession.sharedInstance()
+                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+                try audioSession.setMode(AVAudioSession.Mode.default)
+                try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            } catch {
+                #if DEBUG
+                fatalError("Exception \(#file) \(#function) \(#line) \(error)")
+                #else
+                debugPrint("Exception \(#file) \(#function) \(#line) \(error)")
+                #endif
+            }
         }
-        
-        if let recognitionTask = self.recognitionTask {
-            recognitionTask.finish()
-        }
-        self.recognitionTask = nil
-        
-        self.isRecording = false
-        
+
         return self.text
     }
+    
+
 }

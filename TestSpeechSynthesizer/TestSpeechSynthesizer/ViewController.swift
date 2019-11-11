@@ -13,27 +13,61 @@ class ViewController: UIViewController {
     @IBOutlet weak var button: UIButton?
     
     private var isRecording: Bool = false
+    private var recognizedText = ""
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Do any additional setup after loading the view.
-    }
-    
-//    @IBAction func touchDown () {
-//        SpeechRecognitionMeneger.shared.startRecognition()
-//    }
-    
-    @IBAction func touch () {
-        if self.isRecording {
-            let text = SpeechRecognitionMeneger.shared.stopRecognition()
-            print("text is" + text)
-            self.isRecording = false
-        } else {
-            SpeechRecognitionMeneger.shared.startRecognition()
-            self.isRecording = true
+        self.button?.addTarget(self, action: #selector(buttonTouchDown), for: .touchDown)
+        self.button?.addTarget(self, action: #selector(buttonTouchUpInside), for: .touchUpInside)
+        self.button?.addTarget(self, action: #selector(buttonTouchEnded), for: .touchUpOutside)
+        self.button?.addTarget(self, action: #selector(buttonTouchEnded), for: .touchCancel)
+        SpeechRecognitionMeneger.shared.requestPermission { [weak self] (authorized: Bool) in
+               self?.button?.isEnabled = authorized
+        }
+        
+        SpeechRecognitionMeneger.shared.resultUpdateClosure = { [weak self] (resultText: String?, error: Error?, isFinal: Bool) in
+            if let error = error {
+                debugPrint("error \(error)")
+                self?.recognizedText = ""
+            } else {
+                self?.recognizedText = resultText ?? ""
+            }
+            
+            if isFinal, let resultText = resultText, resultText.count > 0 {
+                self?.recognizedText = resultText
+                print("resultText: \(resultText)")
+            } else {
+                self?.recognizedText = ""
+            }
         }
     }
+    
+    @objc private func buttonTouchDown () {
+        do {
+            try SpeechRecognitionMeneger.shared.startRecognition()
+            self.isRecording = true
+        } catch {
+            debugPrint("Exception \(#file) \(#function) \(#line) \(error)")
+            #if DEBUG
+            self.recognizedText = "\(error)"
+            #endif
+        }
+    }
+
+    @objc private func buttonTouchUpInside () {
+        self.isRecording = false
+        let text = SpeechRecognitionMeneger.shared.stopRecognition()
+        print("text: \(text)")
+    }
+
+    @objc private func buttonTouchEnded () {
+        self.isRecording = false
+        let text = SpeechRecognitionMeneger.shared.stopRecognition()
+        print("text: \(text)")
+    }
+    
+
         
 
 }
